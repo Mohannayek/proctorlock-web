@@ -57,7 +57,7 @@ const LoginScreen = () => {
       if (role === 'student') {
         navigate('/student');
       } else {
-        navigate('/dashboard');
+        navigate('/instructor');
       }
 
     } catch (error) {
@@ -159,7 +159,9 @@ const LoginScreen = () => {
             <div className="mb-6">
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase">Password</label>
-                <span className="text-[10px] font-bold text-[#10B981] hover:underline uppercase tracking-wider cursor-pointer">Forgot?</span>
+                <span className="text-[10px] font-bold text-[#10B981] hover:underline uppercase tracking-wider cursor-pointer" onClick={() => navigate('/forgot-password')}>
+                  Forgot?
+                </span>
               </div>
               <input 
                 type="password" 

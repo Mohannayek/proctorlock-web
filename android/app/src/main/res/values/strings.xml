@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">proctorlock-web</string>
+    <string name="title_activity_main">proctorlock-web</string>
+    <string name="package_name">com.proctorlock.app</string>
+    <string name="custom_url_scheme">com.proctorlock.app</string>
+</resources>

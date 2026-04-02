@@ -1,0 +1,5 @@
+{
+  "appId": "com.proctorlock.app",
+  "appName": "proctorlock-web",
+  "webDir": "dist"
+}
