@@ -6,11 +6,13 @@ import StudentDashboard from './StudentDashboard';
 import SignUpScreen from './SignUpScreen';
 import Verification from './Verification';
 import ExamRoom from './ExamRoom';
+import ForgotPassword from './ForgotPassword';
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<LoginScreen />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/signup" element={<SignUpScreen />} />
         <Route path="/student" element={<StudentDashboard />} />
         <Route path="/verification" element={<Verification />} />
