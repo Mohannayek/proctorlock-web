@@ -59,7 +59,7 @@ const InstructorDashboard = () => {
 
     try {
       // 1. Initialize Gemini (Replace with import.meta.env.VITE_GEMINI_API_KEY later!)
-      const genAI = new GoogleGenerativeAI("AIzaSyAi_Xc6mqNsK-YQTt-Vzb5nSs9QHGYcfuU");
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       
       // We use 1.5 Flash because it is super fast at reading images
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
