@@ -50,16 +50,16 @@ const LoginScreen = () => {
         throw new Error(data.error || 'Login failed');
       }
 
-      // 3. Success! Save user data and JWT token locally
-      localStorage.setItem('proctorlock_user', JSON.stringify(data.user));
-      localStorage.setItem('proctorlock_token', data.token);
-      
-      // 4. Route to the correct dashboard
-      if (role === 'student') {
-        navigate('/student');
-      } else {
-        navigate('/instructor');
-      }
+        // 4. Success! Save session and route to appropriate dashboard
+        console.log("AWS Success:", data.message);
+        localStorage.setItem('proctorlock_user', JSON.stringify(data.user));
+        localStorage.setItem('proctorlock_token', data.token);
+        
+        if (data.user.role === 'student') {
+            navigate(`/student/${data.user.id}`);
+        } else {
+            navigate(`/instructor/${data.user.id}`);
+        }
 
     } catch (error) {
       alert(`Login Error: ${error.message}`);

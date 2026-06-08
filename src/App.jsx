@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginScreen from './login'; 
 import InstructorDashboard from './Instructordashboard';
 import StudentDashboard from './StudentDashboard';
@@ -11,6 +11,7 @@ import ForgotPassword from './ForgotPassword';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const userString = localStorage.getItem('proctorlock_user');
   const token = localStorage.getItem('proctorlock_token');
+  const location = useLocation();
   
   if (!userString || !token) {
     // If there is no user session or token, redirect immediately to login
@@ -21,9 +22,19 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const user = JSON.parse(userString);
     if (allowedRoles && !allowedRoles.includes(user.role)) {
        // If the user's role is not in the allowed list, boot them back to their own dashboard
-       if (user.role === 'student') return <Navigate to="/student" replace />;
-       if (user.role === 'instructor' || user.role === 'admin') return <Navigate to="/instructor" replace />;
+       if (user.role === 'student') return <Navigate to={`/student/${user.id}`} replace />;
+       if (user.role === 'instructor' || user.role === 'admin') return <Navigate to={`/instructor/${user.id}`} replace />;
        return <Navigate to="/" replace />;
+    }
+
+    // Security check: Make sure the ID in the URL matches the logged in user's ID
+    const pathParts = location.pathname.split('/');
+    if (pathParts.length >= 3) {
+       const urlId = pathParts[2];
+       if (urlId !== user.id) {
+           // Redirect them to their actual dashboard
+           return <Navigate to={`/${pathParts[1]}/${user.id}`} replace />;
+       }
     }
   } catch (e) {
     // If localStorage data is corrupted, force login
@@ -47,7 +58,7 @@ function App() {
         <Route path="/verification" element={<Verification />} />
 
         {/* Protected Routes - Redirects to login if not authenticated or wrong role */}
-        <Route path="/student" element={
+        <Route path="/student/:id" element={
           <ProtectedRoute allowedRoles={['student']}>
             <StudentDashboard />
           </ProtectedRoute>
@@ -62,7 +73,7 @@ function App() {
             <ExamRoom />
           </ProtectedRoute>
         } />
-        <Route path="/instructor" element={
+        <Route path="/instructor/:id" element={
           <ProtectedRoute allowedRoles={['instructor', 'admin']}>
             <InstructorDashboard />
           </ProtectedRoute>

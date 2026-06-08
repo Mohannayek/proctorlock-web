@@ -19,7 +19,7 @@ const LiveStreamPlayer = ({ channelName, onClose }) => {
       }
 
       try {
-        client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
 
         client.on("user-published", async (user, mediaType) => {
           await client.subscribe(user, mediaType);

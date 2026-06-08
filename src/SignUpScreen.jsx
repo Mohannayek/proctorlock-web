@@ -12,7 +12,11 @@ const SignUpScreen = () => {
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    institution: '',
+    department: '',
+    studentId: '',
+    phoneNumber: ''
   });
 
   const handleInputChange = (e) => {
@@ -59,7 +63,11 @@ const SignUpScreen = () => {
           email: formData.email,
           fullName: formData.fullName,
           password: formData.password,
-          role: role
+          role: role,
+          institution: formData.institution,
+          department: formData.department,
+          studentId: role === 'student' ? formData.studentId : undefined,
+          phoneNumber: role === 'instructor' ? formData.phoneNumber : undefined
         })
       });
 
@@ -69,14 +77,10 @@ const SignUpScreen = () => {
         throw new Error(data.error || 'Failed to create account');
       }
 
-      // 4. Success! Route to appropriate dashboard
+      // 4. Success! Route to login so they can get their token
       console.log("AWS Success:", data.message);
-      
-      if (role === 'student') {
-        navigate('/student');
-      } else {
-        navigate('/dashboard');
-      }
+      alert("Account created successfully! Please sign in.");
+      navigate('/');
 
     } catch (error) {
         console.error("Registration Error:", error);
@@ -176,6 +180,62 @@ const SignUpScreen = () => {
                 required
               />
             </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">Institution</label>
+                <input 
+                  type="text" 
+                  name="institution"
+                  value={formData.institution}
+                  onChange={handleInputChange}
+                  placeholder="University Name" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-700 focus:ring-2 focus:ring-[#1B365D] focus:border-transparent outline-none transition"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">Department</label>
+                <input 
+                  type="text" 
+                  name="department"
+                  value={formData.department}
+                  onChange={handleInputChange}
+                  placeholder="e.g. Computer Science" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-700 focus:ring-2 focus:ring-[#1B365D] focus:border-transparent outline-none transition"
+                  required
+                />
+              </div>
+            </div>
+
+            {role === 'student' && (
+              <div className="mb-4">
+                <label className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">Student ID / Roll Number</label>
+                <input 
+                  type="text" 
+                  name="studentId"
+                  value={formData.studentId}
+                  onChange={handleInputChange}
+                  placeholder="e.g. S-10924" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-700 focus:ring-2 focus:ring-[#1B365D] focus:border-transparent outline-none transition"
+                  required={role === 'student'}
+                />
+              </div>
+            )}
+
+            {role === 'instructor' && (
+              <div className="mb-4">
+                <label className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-2">Phone Number</label>
+                <input 
+                  type="tel" 
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleInputChange}
+                  placeholder="+1 (555) 000-0000" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-700 focus:ring-2 focus:ring-[#1B365D] focus:border-transparent outline-none transition"
+                  required={role === 'instructor'}
+                />
+              </div>
+            )}
 
             {/* CONDITIONAL INSTRUCTOR CODE FIELD */}
             {role === 'instructor' && (

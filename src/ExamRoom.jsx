@@ -18,6 +18,76 @@ const ExamRoom = () => {
   const [warningCount, setWarningCount] = useState(0);
   const [isTerminated, setIsTerminated] = useState(false);
 
+  // --- SESSION MANAGEMENT ---
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('proctorlock_user') || '{}');
+    const name = user.name || "Unknown Candidate";
+    
+    fetch('http://localhost:3000/live-sessions/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, exam: "Cloud Architecture Assessment" })
+    }).catch(console.error);
+
+    return () => {
+      fetch('http://localhost:3000/live-sessions/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      }).catch(console.error);
+    };
+  }, []);
+
+  // --- AUDIO MONITORING ---
+  useEffect(() => {
+    let audioContext;
+    let analyser;
+    let microphone;
+    let audioInterval;
+
+    const startAudio = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        microphone = audioContext.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        audioInterval = setInterval(() => {
+          if (isTerminated) return;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+          const average = sum / bufferLength;
+          
+          if (average > 30) { // Threshold for background noise
+            setAlerts(prev => {
+               if(!prev.includes("BACKGROUND NOISE DETECTED")) {
+                  return [...prev, "BACKGROUND NOISE DETECTED"];
+               }
+               return prev;
+            });
+          } else {
+             // Clear noise alert if quiet
+             setAlerts(prev => prev.filter(a => a !== "BACKGROUND NOISE DETECTED"));
+          }
+        }, 1500);
+      } catch (err) {
+        console.error("Audio monitoring failed:", err);
+      }
+    };
+    
+    startAudio();
+
+    return () => {
+      if (audioInterval) clearInterval(audioInterval);
+      if (audioContext && audioContext.state !== 'closed') audioContext.close();
+    };
+  }, [isTerminated]);
+
   const questions = [
     { q: "What is the primary advantage of a Serverless architecture?", options: ["No servers at all", "Automatic scaling", "Lower latency", "Fixed cost"] },
     { q: "Which AWS service is best suited for NoSQL data storage?", options: ["RDS", "S3", "DynamoDB", "Redshift"] }
@@ -53,12 +123,13 @@ const ExamRoom = () => {
       if (client) return;
 
       try {
-        client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
         
-        // Use a generic channel name for the demo or the student's name
-        // The instructor dashboard will join this same channel
+        // Use the student's actual name as the channel name
+        const user = JSON.parse(localStorage.getItem('proctorlock_user') || '{}');
+        const channelName = user.name || "defaultChannel";
         await client.setClientRole("host");
-        await client.join(appId, "john", null, null);
+        await client.join(appId, channelName, null, null);
 
         // Get the video track from the react-webcam
         const mediaStreamTrack = webcamRef.current.stream.getVideoTracks()[0];
@@ -96,33 +167,46 @@ const ExamRoom = () => {
         let personCount = 0;
 
         predictions.forEach(prediction => {
-          if (prediction.class === 'cell phone') newAlerts.push("MOBILE DEVICE DETECTED");
+          const unauthorizedObjects = ['cell phone', 'laptop', 'book', 'remote', 'tv'];
+          if (unauthorizedObjects.includes(prediction.class)) {
+            newAlerts.push("UNAUTHORIZED OBJECT DETECTED");
+          }
           if (prediction.class === 'person') personCount++;
         });
 
         if (personCount > 1) newAlerts.push("MULTIPLE PERSONS DETECTED");
         if (personCount === 0) newAlerts.push("CANDIDATE NOT VISIBLE");
 
-        setAlerts(newAlerts);
+        setAlerts(prev => {
+          let merged = [...newAlerts];
+          if (prev.includes("BACKGROUND NOISE DETECTED")) merged.push("BACKGROUND NOISE DETECTED");
+          return merged;
+        });
+
+        // Use a functional check to see if we have ANY alerts (audio or visual)
+        setAlerts(currentAlerts => {
+           if (currentAlerts.length > 0) {
+             const user = JSON.parse(localStorage.getItem('proctorlock_user') || '{}');
+             fetch('http://localhost:3000/incidents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentName: user.name || "Unknown Candidate", alertType: currentAlerts[0] })
+             }).catch(console.error);
+
+             setWarningCount(prev => {
+               const newCount = prev + 1;
+               if (newCount >= 3) setIsTerminated(true);
+               return newCount;
+             });
+           }
+           return currentAlerts;
+        });
       }
     };
 
-    const interval = setInterval(detect, 2000); 
+    const interval = setInterval(detect, 3000); 
     return () => clearInterval(interval);
   }, [model, isTerminated]);
-
-  useEffect(() => {
-    if (alerts.length > 0 && !isTerminated) {
-      const timer = setTimeout(() => {
-        setWarningCount(prev => {
-          const newCount = prev + 1;
-          if (newCount >= 3) setIsTerminated(true);
-          return newCount;
-        });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [alerts, isTerminated]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -163,7 +247,8 @@ const ExamRoom = () => {
     };
     localStorage.setItem('recent_exam', JSON.stringify(examResult));
     alert("Exam Submitted Successfully!");
-    navigate('/student'); 
+    const user = JSON.parse(localStorage.getItem('proctorlock_user'));
+    navigate(`/student/${user.id}`); 
   };
 
   return (
@@ -178,7 +263,10 @@ const ExamRoom = () => {
           <p className="text-slate-400 max-w-md mb-8 text-sm lg:text-base">
             The Sentinel AI has detected multiple security violations. Your session has been closed and your instructor has been notified of the integrity breach.
           </p>
-          <button onClick={() => navigate('/student')} className="bg-white hover:bg-gray-200 text-[#0F172A] px-8 py-3 rounded-xl font-bold transition">
+          <button onClick={() => {
+              const user = JSON.parse(localStorage.getItem('proctorlock_user'));
+              navigate(`/student/${user.id}`);
+          }} className="bg-white hover:bg-gray-200 text-[#0F172A] px-8 py-3 rounded-xl font-bold transition">
             Return to Dashboard
           </button>
         </div>

@@ -16,6 +16,20 @@ const InstructorDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [instructorName, setInstructorName] = useState('Instructor');
   const [instructorId, setInstructorId] = useState('');
+  const [userData, setUserData] = useState({});
+  const [strictnessSettings, setStrictnessSettings] = useState({
+    faceDetection: 'High',
+    audioMonitoring: 'Medium',
+    browserLockdown: 'Strict'
+  });
+
+  const handleStrictnessChange = (field, value) => {
+    setStrictnessSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const saveSettings = () => {
+    alert("Settings saved successfully!");
+  };
 
   // --- NEW AI EXTRACTOR STATE ---
   const fileInputRef = useRef(null);
@@ -35,6 +49,7 @@ const InstructorDashboard = () => {
       const userObj = JSON.parse(savedUser);
       setInstructorName(userObj.name || 'Instructor');
       setInstructorId(userObj.id || '');
+      setUserData(userObj);
     }
 
     const fetchApiData = async (isInitialLoad = true) => {
@@ -42,7 +57,7 @@ const InstructorDashboard = () => {
       try {
         const token = localStorage.getItem('proctorlock_token');
         // Fetch Live Sessions
-        const sessionRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/live-sessions', {
+        const sessionRes = await fetch('http://localhost:3000/live-sessions', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -56,19 +71,19 @@ const InstructorDashboard = () => {
       } catch (e) {
         console.warn("Fallback to mock data for live sessions:", e);
         setLiveSessions([
-          { name: "Marcus Chen", status: "Secure", exam: "CS-402", time: "42:15", img: "Marcus" },
-          { name: "Elena Rodriguez", status: "Warning", exam: "BIO-211", time: "12:08", img: "Elena", flags: 3 },
-          { name: "Sarah Jenkins", status: "Secure", exam: "CS-402", time: "40:10", img: "Sarah" },
-          { name: "David Kim", status: "Critical", exam: "ENG-101", time: "05:50", img: "David", flags: 7 },
-          { name: "Lisa Wong", status: "Secure", exam: "BIO-211", time: "15:30", img: "Lisa" },
-          { name: "James Smith", status: "Secure", exam: "CS-402", time: "38:45", img: "James" },
+          { name: "Rahul Sharma", status: "Secure", exam: "CS-402", time: "42:15", img: "Rahul" },
+          { name: "Priya Patel", status: "Warning", exam: "BIO-211", time: "12:08", img: "Priya", flags: 3 },
+          { name: "Amit Kumar", status: "Secure", exam: "CS-402", time: "40:10", img: "Amit" },
+          { name: "Neha Gupta", status: "Critical", exam: "ENG-101", time: "05:50", img: "Neha", flags: 7 },
+          { name: "Vikram Singh", status: "Secure", exam: "BIO-211", time: "15:30", img: "Vikram" },
+          { name: "Sneha Reddy", status: "Secure", exam: "CS-402", time: "38:45", img: "Sneha" },
         ]);
       }
 
       try {
         const token = localStorage.getItem('proctorlock_token');
         // Fetch Incidents
-        const incidentRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/incidents', {
+        const incidentRes = await fetch('http://localhost:3000/incidents', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -82,10 +97,9 @@ const InstructorDashboard = () => {
       } catch (e) {
         console.warn("Fallback to mock data for incidents:", e);
         setIncidents([
-          { id: 1, student: "David Kim", exam: "ENG-101", time: "10 mins ago", type: "Multiple Faces Detected", severity: "High", color: "red", videoUrl: "https://example-bucket.s3.amazonaws.com/video1.mp4" },
-          { id: 2, student: "Elena Rodriguez", exam: "BIO-211", time: "2 hrs ago", type: "Tab Switched", severity: "Medium", color: "amber", videoUrl: "https://example-bucket.s3.amazonaws.com/video2.mp4" },
-          { id: 3, student: "John Doe", exam: "MATH-301", time: "1 day ago", type: "Background Noise", severity: "Low", color: "blue", videoUrl: "https://example-bucket.s3.amazonaws.com/video3.mp4" },
-          { id: 4, student: "Jane Smith", exam: "CS-402", time: "1 day ago", type: "Looking Away", severity: "Medium", color: "amber", videoUrl: "https://example-bucket.s3.amazonaws.com/video4.mp4" },
+          { id: 1, student: "Neha Gupta", exam: "ENG-101", time: "10 mins ago", type: "Multiple Faces Detected", severity: "High", color: "red", videoUrl: "https://example-bucket.s3.amazonaws.com/video1.mp4" },
+          { id: 2, student: "Priya Patel", exam: "BIO-211", time: "25 mins ago", type: "Audio Spike / Talking", severity: "Medium", color: "amber", videoUrl: "https://example-bucket.s3.amazonaws.com/video2.mp4" },
+          { id: 3, student: "Vikram Singh", exam: "CS-402", time: "1 hour ago", type: "Tab Switch Detected", severity: "Low", color: "blue", videoUrl: "https://example-bucket.s3.amazonaws.com/video3.mp4" },
         ]);
       }
       if (isInitialLoad) setIsLoadingApi(false);
@@ -103,12 +117,9 @@ const InstructorDashboard = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  const handleReviewVideo = (videoUrl) => {
-    if (videoUrl) {
-      alert(`Connecting to AWS S3 bucket to retrieve video stream:\n${videoUrl}\n\n(A video player modal will open here in the next phase)`);
-    } else {
-      alert("No video recording found for this incident.");
-    }
+  const handleReviewVideo = (studentName) => {
+    // Connect to the student's live video stream channel
+    setActiveLiveStream(studentName);
   };
 
   const handleScheduleExam = () => {
@@ -137,16 +148,13 @@ const InstructorDashboard = () => {
     if (selectedFile) startAIScan(selectedFile);
   };
 
-  // Helper to convert the image file so the AI can read it
-  const fileToGenerativePart = async (file) => {
-    const base64EncodedDataPromise = new Promise((resolve) => {
+  // Helper to convert the image file to base64
+  const fileToBase64 = async (file) => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.onloadend = () => resolve(reader.result); // Includes data:image/jpeg;base64, prefix
       reader.readAsDataURL(file);
     });
-    return {
-      inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
-    };
   };
 
   const startAIScan = async (selectedFile) => {
@@ -155,14 +163,7 @@ const InstructorDashboard = () => {
     setQuestions([]);
 
     try {
-      // 1. Initialize Gemini (Replace with import.meta.env.VITE_GEMINI_API_KEY later!)
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      
-      // We use 1.5 Flash because it is super fast at reading images
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      // 2. Prepare the Image and the strict prompt
-      const imagePart = await fileToGenerativePart(selectedFile);
+      const base64Image = await fileToBase64(selectedFile);
       const prompt = `
         You are an AI assistant for a university professor. 
         Read this image of an exam, worksheet, or textbook quiz. 
@@ -182,9 +183,35 @@ const InstructorDashboard = () => {
         If there are no options in the image, generate 4 plausible multiple choice options based on the question.
       `;
 
-      // 3. Call the API!
-      const result = await model.generateContent([prompt, imagePart]);
-      const responseText = result.response.text();
+      // Call OpenRouter API
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "http://localhost:5173", // Optional, for OpenRouter rankings
+          "X-Title": "Proctorlock", // Optional, for OpenRouter rankings
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "google/gemini-flash-1.5",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: base64Image } }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const responseText = result.choices[0].message.content;
 
       // 4. Clean up the AI's text and turn it into real React State
       const cleanedText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -788,7 +815,7 @@ const InstructorDashboard = () => {
                              <span className="text-xs text-gray-400 mb-2">{incident.time}</span>
                              <div className="flex space-x-2">
                                <button className="text-xs font-semibold bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Dismiss</button>
-                               <button onClick={() => handleReviewVideo(incident.videoUrl)} className="text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition shadow-sm">Review Video</button>
+                               <button onClick={() => handleReviewVideo(incident.student)} className="text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition shadow-sm">Review Video</button>
                              </div>
                           </div>
                        </div>
@@ -817,11 +844,23 @@ const InstructorDashboard = () => {
                         <div className="flex-1 grid grid-cols-2 gap-4">
                            <div>
                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Full Name</label>
-                             <input type="text" defaultValue="Dr. Aris Vance" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-[#1B365D] outline-none focus:ring-2 focus:ring-blue-100 transition" />
+                             <input type="text" readOnly value={userData.name || userData.fullName || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
                            </div>
                            <div>
                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
-                             <input type="email" defaultValue="aris.vance@university.edu" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-[#1B365D] outline-none focus:ring-2 focus:ring-blue-100 transition" />
+                             <input type="email" readOnly value={userData.email || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Institution</label>
+                             <input type="text" readOnly value={userData.institution || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Department</label>
+                             <input type="text" readOnly value={userData.department || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Phone Number</label>
+                             <input type="text" readOnly value={userData.phoneNumber || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
                            </div>
                         </div>
                      </div>
@@ -831,20 +870,21 @@ const InstructorDashboard = () => {
                      <h3 className="text-lg font-bold text-[#1B365D] mb-4">AI Proctoring Strictness</h3>
                      <div className="space-y-4">
                         {[
-                          { title: "Face Detection Sensitivity", desc: "How quickly to flag if a face is not visible.", level: "High" },
-                          { title: "Audio Monitoring", desc: "Flag background noises and speaking.", level: "Medium" },
-                          { title: "Browser Lockdown", desc: "Prevent tab switching and copy/paste.", level: "Strict" },
+                          { id: 'faceDetection', title: "Face Detection Sensitivity", desc: "How quickly to flag if a face is not visible.", options: ['Low', 'Medium', 'High'] },
+                          { id: 'audioMonitoring', title: "Audio Monitoring", desc: "Flag background noises and speaking.", options: ['Low', 'Medium', 'High'] },
+                          { id: 'browserLockdown', title: "Browser Lockdown", desc: "Prevent tab switching and copy/paste.", options: ['Lenient', 'Strict'] },
                         ].map((setting, i) => (
                            <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                               <div>
                                  <h4 className="font-bold text-[#1B365D] text-sm">{setting.title}</h4>
                                  <p className="text-xs text-gray-500 mt-0.5">{setting.desc}</p>
                               </div>
-                              <select className="bg-white border border-gray-200 text-sm font-semibold text-[#1B365D] rounded-lg px-3 py-1.5 outline-none cursor-pointer shadow-sm">
-                                <option>{setting.level}</option>
-                                <option>Low</option>
-                                <option>Medium</option>
-                                <option>High</option>
+                              <select 
+                                value={strictnessSettings[setting.id]} 
+                                onChange={(e) => handleStrictnessChange(setting.id, e.target.value)}
+                                className="bg-white border border-gray-200 text-sm font-semibold text-[#1B365D] rounded-lg px-3 py-1.5 outline-none cursor-pointer shadow-sm"
+                              >
+                                {setting.options.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
                               </select>
                            </div>
                         ))}
@@ -852,7 +892,7 @@ const InstructorDashboard = () => {
                   </div>
 
                   <div className="p-6 bg-gray-50/50 flex justify-end">
-                     <button className="bg-[#1B365D] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#15294a] transition shadow-md">Save Changes</button>
+                     <button onClick={saveSettings} className="bg-[#1B365D] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#15294a] transition shadow-md">Save Changes</button>
                   </div>
                </div>
             </div>

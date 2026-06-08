@@ -11,6 +11,7 @@ const StudentDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userName, setUserName] = useState('Student'); 
   const [userId, setUserId] = useState('');
+  const [userData, setUserData] = useState({});
   const [recentExam, setRecentExam] = useState(null); 
 
   useEffect(() => {
@@ -20,6 +21,7 @@ const StudentDashboard = () => {
       const userObj = JSON.parse(savedUser);
       setUserName(userObj.name || userObj.fullName || 'Student'); 
       setUserId(userObj.id || '');
+      setUserData(userObj);
     } else {
       navigate('/');
     }
@@ -158,7 +160,52 @@ const StudentDashboard = () => {
             </>
           )}
 
-          {activeTab !== 'OVERVIEW' && (
+          {activeTab === 'SETTINGS' && (
+            <div className="max-w-4xl mx-auto space-y-8 pb-20">
+               <div>
+                  <h2 className="text-3xl font-bold text-[#1B365D]">Settings</h2>
+                  <p className="text-gray-500 mt-1">Manage your account and profile information.</p>
+               </div>
+
+               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-gray-100">
+                     <h3 className="text-lg font-bold text-[#1B365D] mb-4">Profile Information</h3>
+                     <div className="flex items-center space-x-6 mb-6">
+                        <div className="w-20 h-20 rounded-full bg-blue-100 overflow-hidden border-2 border-white shadow-md relative group">
+                           <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`} alt="avatar" />
+                        </div>
+                        <div className="flex-1 grid grid-cols-2 gap-4">
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Full Name</label>
+                             <input type="text" readOnly value={userData.name || userData.fullName || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
+                             <input type="email" readOnly value={userData.email || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                           </div>
+                        </div>
+                     </div>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Student ID</label>
+                          <input type="text" readOnly value={userData.studentId || userData.id || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Institution</label>
+                          <input type="text" readOnly value={userData.institution || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Department</label>
+                          <input type="text" readOnly value={userData.department || ''} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-600 outline-none cursor-not-allowed" />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeTab !== 'OVERVIEW' && activeTab !== 'SETTINGS' && (
             <div className="flex flex-col items-center justify-center h-[50vh] text-center p-6 border-2 border-dashed border-gray-200 rounded-3xl">
               <Settings size={32} className="text-gray-400 mb-4" />
               <p className="text-gray-500">{activeTab} content goes here.</p>
