@@ -50,8 +50,9 @@ const LoginScreen = () => {
         throw new Error(data.error || 'Login failed');
       }
 
-      // 3. Success! Save user data locally so the dashboard knows who is logged in
+      // 3. Success! Save user data and JWT token locally
       localStorage.setItem('proctorlock_user', JSON.stringify(data.user));
+      localStorage.setItem('proctorlock_token', data.token);
       
       // 4. Route to the correct dashboard
       if (role === 'student') {

@@ -8,15 +8,31 @@ import Verification from './Verification';
 import ExamRoom from './ExamRoom';
 import ForgotPassword from './ForgotPassword';
 // Protected Route Wrapper Component
-const ProtectedRoute = ({ children }) => {
-  const user = localStorage.getItem('proctorlock_user');
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const userString = localStorage.getItem('proctorlock_user');
+  const token = localStorage.getItem('proctorlock_token');
   
-  if (!user) {
-    // If there is no user session in localStorage, redirect immediately to login
+  if (!userString || !token) {
+    // If there is no user session or token, redirect immediately to login
+    return <Navigate to="/" replace />;
+  }
+
+  try {
+    const user = JSON.parse(userString);
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+       // If the user's role is not in the allowed list, boot them back to their own dashboard
+       if (user.role === 'student') return <Navigate to="/student" replace />;
+       if (user.role === 'instructor' || user.role === 'admin') return <Navigate to="/instructor" replace />;
+       return <Navigate to="/" replace />;
+    }
+  } catch (e) {
+    // If localStorage data is corrupted, force login
+    localStorage.removeItem('proctorlock_user');
+    localStorage.removeItem('proctorlock_token');
     return <Navigate to="/" replace />;
   }
   
-  // If user is logged in, allow them to view the page
+  // If user is logged in and authorized, allow them to view the page
   return children;
 };
 
@@ -30,24 +46,24 @@ function App() {
         <Route path="/signup" element={<SignUpScreen />} />
         <Route path="/verification" element={<Verification />} />
 
-        {/* Protected Routes - Redirects to login if not authenticated */}
+        {/* Protected Routes - Redirects to login if not authenticated or wrong role */}
         <Route path="/student" element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['student']}>
             <StudentDashboard />
           </ProtectedRoute>
         } />
         <Route path="/examroom" element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['student']}>
             <ExamRoom />
           </ProtectedRoute>
         } />
         <Route path="/exam" element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['student']}>
             <ExamRoom />
           </ProtectedRoute>
         } />
         <Route path="/instructor" element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['instructor', 'admin']}>
             <InstructorDashboard />
           </ProtectedRoute>
         } />

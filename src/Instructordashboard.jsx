@@ -14,6 +14,8 @@ const InstructorDashboard = () => {
   // --- EXISTING DASHBOARD STATE ---
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState('');
+  const [instructorName, setInstructorName] = useState('Instructor');
+  const [instructorId, setInstructorId] = useState('');
 
   // --- NEW AI EXTRACTOR STATE ---
   const fileInputRef = useRef(null);
@@ -28,11 +30,23 @@ const InstructorDashboard = () => {
   const [activeLiveStream, setActiveLiveStream] = useState(null);
 
   useEffect(() => {
+    const savedUser = localStorage.getItem('proctorlock_user');
+    if (savedUser) {
+      const userObj = JSON.parse(savedUser);
+      setInstructorName(userObj.name || 'Instructor');
+      setInstructorId(userObj.id || '');
+    }
+
     const fetchApiData = async (isInitialLoad = true) => {
       if (isInitialLoad) setIsLoadingApi(true);
       try {
+        const token = localStorage.getItem('proctorlock_token');
         // Fetch Live Sessions
-        const sessionRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/live-sessions');
+        const sessionRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/live-sessions', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (sessionRes.ok) {
            const sessionData = await sessionRes.json();
            setLiveSessions(sessionData);
@@ -52,8 +66,13 @@ const InstructorDashboard = () => {
       }
 
       try {
+        const token = localStorage.getItem('proctorlock_token');
         // Fetch Incidents
-        const incidentRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/incidents');
+        const incidentRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/incidents', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (incidentRes.ok) {
            const incidentData = await incidentRes.json();
            setIncidents(incidentData);
@@ -98,6 +117,7 @@ const InstructorDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('proctorlock_user');
+    localStorage.removeItem('proctorlock_token');
     navigate('/');
   };
 
@@ -300,7 +320,7 @@ const InstructorDashboard = () => {
               <div className="flex items-center justify-between mb-8">
                   <div>
                       <h1 className="text-3xl font-bold text-[#1B365D]">Instructor Dashboard</h1>
-                      <p className="text-gray-500 mt-1">Welcome back, Dr. Aris. 12 exams are currently live.</p>
+                      <p className="text-gray-500 mt-1">Welcome back, {instructorName} <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-2">ID: {instructorId}</span>. 12 exams are currently live.</p>
                   </div>
                   <div className="flex space-x-4">
                       <button className="bg-blue-50 text-[#1B365D] px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-100 transition flex items-center space-x-2" onClick={() => setActiveTab('AI GENERATOR')}>

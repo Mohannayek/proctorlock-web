@@ -10,6 +10,7 @@ const StudentDashboard = () => {
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userName, setUserName] = useState('Student'); 
+  const [userId, setUserId] = useState('');
   const [recentExam, setRecentExam] = useState(null); 
 
   useEffect(() => {
@@ -17,7 +18,8 @@ const StudentDashboard = () => {
     const savedUser = localStorage.getItem('proctorlock_user');
     if (savedUser) {
       const userObj = JSON.parse(savedUser);
-      setUserName(userObj.fullName || 'Student'); 
+      setUserName(userObj.name || userObj.fullName || 'Student'); 
+      setUserId(userObj.id || '');
     } else {
       navigate('/');
     }
@@ -31,6 +33,7 @@ const StudentDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('proctorlock_user');
+    localStorage.removeItem('proctorlock_token');
     navigate('/');
   };
 
@@ -101,7 +104,7 @@ const StudentDashboard = () => {
           {activeTab === 'OVERVIEW' && (
             <>
               <div className="mb-6">
-                  <h1 className="text-2xl lg:text-3xl font-bold text-[#1B365D]">Welcome, {userName.split(' ')[0]}</h1>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-[#1B365D]">Welcome, {userName.split(' ')[0]} <span className="text-sm bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-2 align-middle font-medium">ID: {userId}</span></h1>
                   <p className="text-sm text-gray-500 mt-1">Exam in <span className="font-bold text-[#10B981]">2 days</span>.</p>
               </div>
 
