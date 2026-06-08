@@ -1,7 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { Shield, LayoutGrid, Video, Library, BarChart2, Settings, Users, Bell, HelpCircle, Eye, AlertTriangle, Wand2, UploadCloud, Cpu, CheckCircle, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Shield, LayoutGrid, Video, Library, BarChart2, Settings, Users, Bell, HelpCircle, 
+  Eye, AlertTriangle, Wand2, UploadCloud, Cpu, CheckCircle, Plus, Trash2, 
+  Search, MoreVertical, Edit, FileText, XCircle, Clock, Calendar, Check, Sliders, MonitorPlay, Activity, Mail, Phone, Lock, List, Filter
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import LiveStreamPlayer from './LiveStreamPlayer';
 
 const InstructorDashboard = () => {
   const navigate = useNavigate();
@@ -16,11 +21,83 @@ const InstructorDashboard = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [questions, setQuestions] = useState([]);
 
+  // --- API INTEGRATION STATE ---
+  const [liveSessions, setLiveSessions] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [isLoadingApi, setIsLoadingApi] = useState(true);
+  const [activeLiveStream, setActiveLiveStream] = useState(null);
+
+  useEffect(() => {
+    const fetchApiData = async (isInitialLoad = true) => {
+      if (isInitialLoad) setIsLoadingApi(true);
+      try {
+        // Fetch Live Sessions
+        const sessionRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/live-sessions');
+        if (sessionRes.ok) {
+           const sessionData = await sessionRes.json();
+           setLiveSessions(sessionData);
+        } else {
+           throw new Error("Live sessions API not ready");
+        }
+      } catch (e) {
+        console.warn("Fallback to mock data for live sessions:", e);
+        setLiveSessions([
+          { name: "Marcus Chen", status: "Secure", exam: "CS-402", time: "42:15", img: "Marcus" },
+          { name: "Elena Rodriguez", status: "Warning", exam: "BIO-211", time: "12:08", img: "Elena", flags: 3 },
+          { name: "Sarah Jenkins", status: "Secure", exam: "CS-402", time: "40:10", img: "Sarah" },
+          { name: "David Kim", status: "Critical", exam: "ENG-101", time: "05:50", img: "David", flags: 7 },
+          { name: "Lisa Wong", status: "Secure", exam: "BIO-211", time: "15:30", img: "Lisa" },
+          { name: "James Smith", status: "Secure", exam: "CS-402", time: "38:45", img: "James" },
+        ]);
+      }
+
+      try {
+        // Fetch Incidents
+        const incidentRes = await fetch('https://uy9fws4qb5.execute-api.us-east-1.amazonaws.com/incidents');
+        if (incidentRes.ok) {
+           const incidentData = await incidentRes.json();
+           setIncidents(incidentData);
+        } else {
+           throw new Error("Incidents API not ready");
+        }
+      } catch (e) {
+        console.warn("Fallback to mock data for incidents:", e);
+        setIncidents([
+          { id: 1, student: "David Kim", exam: "ENG-101", time: "10 mins ago", type: "Multiple Faces Detected", severity: "High", color: "red", videoUrl: "https://example-bucket.s3.amazonaws.com/video1.mp4" },
+          { id: 2, student: "Elena Rodriguez", exam: "BIO-211", time: "2 hrs ago", type: "Tab Switched", severity: "Medium", color: "amber", videoUrl: "https://example-bucket.s3.amazonaws.com/video2.mp4" },
+          { id: 3, student: "John Doe", exam: "MATH-301", time: "1 day ago", type: "Background Noise", severity: "Low", color: "blue", videoUrl: "https://example-bucket.s3.amazonaws.com/video3.mp4" },
+          { id: 4, student: "Jane Smith", exam: "CS-402", time: "1 day ago", type: "Looking Away", severity: "Medium", color: "amber", videoUrl: "https://example-bucket.s3.amazonaws.com/video4.mp4" },
+        ]);
+      }
+      if (isInitialLoad) setIsLoadingApi(false);
+    };
+
+    // Initial load
+    fetchApiData(true);
+
+    // Set up polling for real-time updates (every 5 seconds)
+    const intervalId = setInterval(() => {
+      fetchApiData(false);
+    }, 5000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const handleReviewVideo = (videoUrl) => {
+    if (videoUrl) {
+      alert(`Connecting to AWS S3 bucket to retrieve video stream:\n${videoUrl}\n\n(A video player modal will open here in the next phase)`);
+    } else {
+      alert("No video recording found for this incident.");
+    }
+  };
+
   const handleScheduleExam = () => {
     alert("This will open the 'Create Exam' modal in the next phase!");
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('proctorlock_user');
     navigate('/');
   };
 
@@ -510,20 +587,331 @@ const InstructorDashboard = () => {
             </div>
           )}
 
-          {/* 3. PLACEHOLDER FOR OTHER TABS */}
-          {activeTab !== 'OVERVIEW' && activeTab !== 'AI GENERATOR' && (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center border-2 border-dashed border-gray-200 rounded-3xl bg-white/50">
-              <div className="bg-blue-50 text-[#1B365D] p-4 rounded-full mb-4">
-                <Settings size={32} />
+          {/* 3. LIVE SESSIONS TAB */}
+          {activeTab === 'LIVE SESSIONS' && (
+            <div className="max-w-6xl mx-auto space-y-6 pb-20">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-3xl font-bold text-[#1B365D]">Live Sessions</h2>
+                  <p className="text-gray-500 mt-1">Monitoring 12 active students across 3 exams.</p>
+                </div>
+                <div className="flex space-x-3">
+                  <button className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition flex items-center space-x-2">
+                    <Filter size={16} /> <span>Filter</span>
+                  </button>
+                  <button className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition flex items-center space-x-2">
+                    <AlertTriangle size={16} /> <span>High Risk Only</span>
+                  </button>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-[#1B365D] mb-2">{activeTab} Module</h2>
-              <p className="text-gray-500 max-w-md">This section is currently under development. Data will be populated from AWS DynamoDB in the next phase.</p>
-              <button 
-                onClick={() => setActiveTab('OVERVIEW')}
-                className="mt-6 px-6 py-2 bg-white border border-gray-200 text-[#1B365D] font-bold rounded-xl hover:bg-gray-50 transition shadow-sm"
-              >
-                Return to Overview
-              </button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {isLoadingApi ? (
+                   <div className="col-span-full py-12 flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1B365D]"></div>
+                   </div>
+                ) : (
+                  liveSessions.map((student, i) => (
+                  <div key={i} className={`bg-white rounded-2xl overflow-hidden border ${student.status === 'Critical' ? 'border-red-400 shadow-[0_0_15px_rgba(248,113,113,0.3)]' : student.status === 'Warning' ? 'border-amber-400' : 'border-gray-100'} shadow-sm relative group`}>
+                    {/* Status Badge */}
+                    <div className="absolute top-3 left-3 z-10 flex items-center space-x-1.5 bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                      <div className={`w-2 h-2 rounded-full ${student.status === 'Secure' ? 'bg-emerald-500' : student.status === 'Warning' ? 'bg-amber-500' : 'bg-red-500 animate-pulse'}`}></div>
+                      <span className={student.status === 'Secure' ? 'text-emerald-700' : student.status === 'Warning' ? 'text-amber-700' : 'text-red-700'}>{student.status}</span>
+                    </div>
+
+                    {/* Camera Feed Placeholder */}
+                    <div className="h-36 bg-gray-900 relative">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.img}&backgroundColor=c0aede`} alt="feed" className="w-full h-full object-cover opacity-80" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                      <div className="absolute bottom-3 left-3 text-white text-xs font-medium flex items-center space-x-2">
+                         <Clock size={12} /> <span>{student.time}</span>
+                      </div>
+                      
+                      {/* Hover Actions */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-3 backdrop-blur-sm">
+                        <button onClick={() => setActiveLiveStream(student.name)} className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-500 transition"><Eye size={18} /></button>
+                        <button className="bg-white text-gray-900 p-2 rounded-full hover:bg-gray-200 transition"><MoreVertical size={18} /></button>
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-bold text-[#1B365D] text-sm truncate">{student.name}</h3>
+                          <p className="text-xs text-gray-500">{student.exam}</p>
+                        </div>
+                        {student.flags > 0 && (
+                          <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center">
+                             {student.flags} Flags
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. EXAM LIBRARY TAB */}
+          {activeTab === 'EXAM LIBRARY' && (
+            <div className="max-w-6xl mx-auto space-y-8 pb-20">
+               <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-3xl font-bold text-[#1B365D]">Exam Library</h2>
+                    <p className="text-gray-500 mt-1">Manage your created exams and drafts.</p>
+                  </div>
+                  <button className="bg-[#1B365D] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#15294a] transition shadow-md flex items-center space-x-2" onClick={handleScheduleExam}>
+                     <Plus size={16} /> <span>Create New Exam</span>
+                  </button>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {[
+                   { title: "Advanced Cloud Architecture", code: "CS-402", date: "Oct 12, 2024", duration: "60 Min", questions: 45, status: "Active", color: "blue" },
+                   { title: "Genetics Midterm", code: "BIO-211", date: "Oct 14, 2024", duration: "90 Min", questions: 60, status: "Scheduled", color: "emerald" },
+                   { title: "Calculus III Final", code: "MATH-301", date: "Nov 02, 2024", duration: "120 Min", questions: 100, status: "Draft", color: "slate" },
+                   { title: "Introduction to Psychology", code: "PSY-101", date: "Sep 28, 2024", duration: "45 Min", questions: 30, status: "Completed", color: "gray" },
+                 ].map((exam, i) => (
+                   <div key={i} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition group">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className={`p-3 rounded-xl bg-${exam.color}-50 text-${exam.color}-600`}>
+                          <FileText size={24} />
+                        </div>
+                        <button className="text-gray-400 hover:text-gray-700 transition"><MoreVertical size={20}/></button>
+                      </div>
+                      <h3 className="font-bold text-[#1B365D] text-lg mb-1 line-clamp-1">{exam.title}</h3>
+                      <p className="text-xs text-gray-500 mb-4 font-medium">{exam.code}</p>
+                      
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs mb-6">
+                         <div className="flex items-center space-x-2 text-gray-600"><Calendar size={14} className="text-gray-400"/> <span>{exam.date}</span></div>
+                         <div className="flex items-center space-x-2 text-gray-600"><Clock size={14} className="text-gray-400"/> <span>{exam.duration}</span></div>
+                         <div className="flex items-center space-x-2 text-gray-600"><List size={14} className="text-gray-400"/> <span>{exam.questions} Qs</span></div>
+                         <div className="flex items-center space-x-2 text-gray-600"><Shield size={14} className="text-gray-400"/> <span className="text-[#10B981] font-medium">Proctored</span></div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <span className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-md ${
+                          exam.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 
+                          exam.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
+                          exam.status === 'Completed' ? 'bg-gray-100 text-gray-600' : 'bg-slate-100 text-slate-600'
+                        }`}>{exam.status}</span>
+                        
+                        <div className="flex space-x-2">
+                           <button className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded transition"><Edit size={16}/></button>
+                           {exam.status === 'Draft' && <button className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition"><Trash2 size={16}/></button>}
+                        </div>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
+
+          {/* 5. INTEGRITY REPORTS TAB */}
+          {activeTab === 'INTEGRITY REPORTS' && (
+            <div className="max-w-5xl mx-auto space-y-6 pb-20">
+               <div className="mb-6">
+                  <h2 className="text-3xl font-bold text-[#1B365D]">Integrity Reports</h2>
+                  <p className="text-gray-500 mt-1">Review AI-flagged incidents and session analytics.</p>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
+                     <div className="p-4 bg-emerald-50 text-emerald-600 rounded-xl"><Shield size={24}/></div>
+                     <div>
+                       <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Overall Score</p>
+                       <h3 className="text-2xl font-bold text-[#1B365D]">98.4%</h3>
+                     </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
+                     <div className="p-4 bg-red-50 text-red-600 rounded-xl"><AlertTriangle size={24}/></div>
+                     <div>
+                       <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Critical Flags</p>
+                       <h3 className="text-2xl font-bold text-[#1B365D]">24</h3>
+                     </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
+                     <div className="p-4 bg-blue-50 text-blue-600 rounded-xl"><MonitorPlay size={24}/></div>
+                     <div>
+                       <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Sessions Monitored</p>
+                       <h3 className="text-2xl font-bold text-[#1B365D]">8,421</h3>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                     <h3 className="font-bold text-[#1B365D]">Recent Flagged Incidents</h3>
+                     <button className="text-sm text-blue-600 font-semibold hover:underline">View All</button>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {isLoadingApi ? (
+                       <div className="py-12 flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1B365D]"></div>
+                       </div>
+                    ) : (
+                      incidents.map((incident, i) => (
+                       <div key={i} className="p-5 flex items-center justify-between hover:bg-gray-50/50 transition">
+                          <div className="flex items-center space-x-4">
+                             <div className={`w-2 h-10 rounded-full bg-${incident.color}-500`}></div>
+                             <div>
+                                <div className="flex items-center space-x-2">
+                                  <h4 className="font-bold text-[#1B365D]">{incident.student}</h4>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-${incident.color}-100 text-${incident.color}-700`}>{incident.severity}</span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">{incident.type} &bull; <span className="text-gray-400">{incident.exam}</span></p>
+                             </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                             <span className="text-xs text-gray-400 mb-2">{incident.time}</span>
+                             <div className="flex space-x-2">
+                               <button className="text-xs font-semibold bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">Dismiss</button>
+                               <button onClick={() => handleReviewVideo(incident.videoUrl)} className="text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition shadow-sm">Review Video</button>
+                             </div>
+                          </div>
+                       </div>
+                    )))}
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* 6. SETTINGS TAB */}
+          {activeTab === 'SETTINGS' && (
+            <div className="max-w-4xl mx-auto space-y-8 pb-20">
+               <div>
+                  <h2 className="text-3xl font-bold text-[#1B365D]">Settings</h2>
+                  <p className="text-gray-500 mt-1">Manage your account and proctoring preferences.</p>
+               </div>
+
+               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-gray-100">
+                     <h3 className="text-lg font-bold text-[#1B365D] mb-4">Profile Information</h3>
+                     <div className="flex items-center space-x-6">
+                        <div className="w-20 h-20 rounded-full bg-blue-100 overflow-hidden border-2 border-white shadow-md relative group cursor-pointer">
+                           <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Instructor" alt="avatar" />
+                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><Edit size={20} className="text-white"/></div>
+                        </div>
+                        <div className="flex-1 grid grid-cols-2 gap-4">
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Full Name</label>
+                             <input type="text" defaultValue="Dr. Aris Vance" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-[#1B365D] outline-none focus:ring-2 focus:ring-blue-100 transition" />
+                           </div>
+                           <div>
+                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
+                             <input type="email" defaultValue="aris.vance@university.edu" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-[#1B365D] outline-none focus:ring-2 focus:ring-blue-100 transition" />
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-6 border-b border-gray-100">
+                     <h3 className="text-lg font-bold text-[#1B365D] mb-4">AI Proctoring Strictness</h3>
+                     <div className="space-y-4">
+                        {[
+                          { title: "Face Detection Sensitivity", desc: "How quickly to flag if a face is not visible.", level: "High" },
+                          { title: "Audio Monitoring", desc: "Flag background noises and speaking.", level: "Medium" },
+                          { title: "Browser Lockdown", desc: "Prevent tab switching and copy/paste.", level: "Strict" },
+                        ].map((setting, i) => (
+                           <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                              <div>
+                                 <h4 className="font-bold text-[#1B365D] text-sm">{setting.title}</h4>
+                                 <p className="text-xs text-gray-500 mt-0.5">{setting.desc}</p>
+                              </div>
+                              <select className="bg-white border border-gray-200 text-sm font-semibold text-[#1B365D] rounded-lg px-3 py-1.5 outline-none cursor-pointer shadow-sm">
+                                <option>{setting.level}</option>
+                                <option>Low</option>
+                                <option>Medium</option>
+                                <option>High</option>
+                              </select>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  <div className="p-6 bg-gray-50/50 flex justify-end">
+                     <button className="bg-[#1B365D] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-[#15294a] transition shadow-md">Save Changes</button>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* 7. USER MANAGEMENT TAB */}
+          {activeTab === 'USER MANAGEMENT' && (
+            <div className="max-w-6xl mx-auto space-y-6 pb-20">
+               <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-3xl font-bold text-[#1B365D]">User Management</h2>
+                    <p className="text-gray-500 mt-1">Manage 1,482 enrolled students across your courses.</p>
+                  </div>
+                  <button className="bg-[#10B981] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-600 transition shadow-md flex items-center space-x-2">
+                     <Plus size={16} /> <span>Invite Students</span>
+                  </button>
+               </div>
+
+               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                     <div className="relative">
+                        <input type="text" placeholder="Search students by name or ID..." className="bg-white border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm w-80 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition" />
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                     </div>
+                     <button className="text-gray-500 hover:text-gray-800 bg-white border border-gray-200 px-3 py-2 rounded-lg text-sm font-semibold shadow-sm flex items-center space-x-2">
+                        <Filter size={16} /> <span>Filter by Course</span>
+                     </button>
+                  </div>
+                  
+                  <table className="w-full text-left border-collapse">
+                      <thead>
+                          <tr className="bg-white border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                              <th className="p-4 pl-6">Student Name</th>
+                              <th className="p-4">Student ID</th>
+                              <th className="p-4">Courses</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4 pr-6 text-right">Actions</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                          {[
+                             { name: "Alex Johnson", id: "S-10924", courses: 2, status: "Active" },
+                             { name: "Maria Garcia", id: "S-10925", courses: 1, status: "Active" },
+                             { name: "James Wilson", id: "S-10926", courses: 3, status: "Suspended" },
+                             { name: "Sophia Lee", id: "S-10927", courses: 2, status: "Active" },
+                             { name: "Liam Brown", id: "S-10928", courses: 1, status: "Pending" },
+                          ].map((student, i) => (
+                             <tr key={i} className="hover:bg-gray-50/50 transition">
+                                <td className="p-4 pl-6 flex items-center space-x-3">
+                                   <div className="w-8 h-8 rounded-full bg-blue-100 overflow-hidden border border-gray-200">
+                                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}`} alt="avatar" />
+                                   </div>
+                                   <span className="text-sm font-bold text-[#1B365D]">{student.name}</span>
+                                </td>
+                                <td className="p-4 text-sm font-medium text-gray-600">{student.id}</td>
+                                <td className="p-4 text-sm font-medium text-gray-600">{student.courses} Courses</td>
+                                <td className="p-4">
+                                   <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-md ${
+                                     student.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
+                                     student.status === 'Suspended' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                   }`}>{student.status}</span>
+                                </td>
+                                <td className="p-4 pr-6 text-right">
+                                   <button className="text-gray-400 hover:text-[#1B365D] p-1.5 rounded transition"><MoreVertical size={18}/></button>
+                                </td>
+                             </tr>
+                          ))}
+                      </tbody>
+                  </table>
+                  <div className="p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
+                     <span>Showing 1 to 5 of 1,482 entries</span>
+                     <div className="flex space-x-1">
+                        <button className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50">Prev</button>
+                        <button className="px-3 py-1 bg-[#1B365D] text-white rounded-md">1</button>
+                        <button className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50">2</button>
+                        <button className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50">Next</button>
+                     </div>
+                  </div>
+               </div>
             </div>
           )}
 
@@ -539,6 +927,13 @@ const InstructorDashboard = () => {
           100% { top: 105%; opacity: 0; }
         }
       `}</style>
+
+      {activeLiveStream && (
+        <LiveStreamPlayer 
+          channelName={activeLiveStream} 
+          onClose={() => setActiveLiveStream(null)} 
+        />
+      )}
     </div>
   );
 }; // <-- THE COMPONENT CLOSES PERFECTLY HERE NOW

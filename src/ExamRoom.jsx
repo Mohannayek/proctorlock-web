@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import * as tf from '@tensorflow/tfjs';
 import * as cocossd from '@tensorflow-models/coco-ssd';
+import AgoraRTC from 'agora-rtc-sdk-ng';
 import { Shield, AlertTriangle, Clock, ChevronRight, CheckCircle, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,6 +29,61 @@ const ExamRoom = () => {
       setModel(loadedModel);
     };
     loadModel();
+  }, []);
+
+  // --- AGORA LIVE STREAMING (BROADCASTER) ---
+  useEffect(() => {
+    let client = null;
+    let customVideoTrack = null;
+    let retryInterval = null;
+
+    const startBroadcast = async () => {
+      const appId = import.meta.env.VITE_AGORA_APP_ID;
+      if (!appId || appId === 'YOUR_AGORA_APP_ID_HERE') {
+        console.warn("Agora App ID is missing. Live streaming disabled.");
+        return;
+      }
+
+      // We need to wait until the webcam actually has a stream
+      if (!webcamRef.current || !webcamRef.current.stream) {
+        return; 
+      }
+
+      // If we already connected, don't do it again
+      if (client) return;
+
+      try {
+        client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        
+        // Use a generic channel name for the demo or the student's name
+        // The instructor dashboard will join this same channel
+        await client.setClientRole("host");
+        await client.join(appId, "john", null, null);
+
+        // Get the video track from the react-webcam
+        const mediaStreamTrack = webcamRef.current.stream.getVideoTracks()[0];
+        if (mediaStreamTrack) {
+           customVideoTrack = AgoraRTC.createCustomVideoTrack({ mediaStreamTrack });
+           await client.publish([customVideoTrack]);
+           console.log("Successfully broadcasting webcam to Agora!");
+        }
+        
+        // Stop checking once connected
+        if (retryInterval) clearInterval(retryInterval);
+
+      } catch (e) {
+        console.error("Agora Broadcast Error:", e);
+      }
+    };
+
+    // Keep checking if the webcam stream is ready
+    retryInterval = setInterval(startBroadcast, 2000);
+
+    return () => {
+      if (retryInterval) clearInterval(retryInterval);
+      if (customVideoTrack) customVideoTrack.close();
+      if (client) client.leave();
+    };
   }, []);
 
   useEffect(() => {
