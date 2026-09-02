@@ -33,6 +33,7 @@ Ensure you have the following installed on your local machine:
 * [Node.js](https://nodejs.org/) (v16.0 or higher recommended)
 * npm or yarn package manager
 * Git
+* npx
 
 ### Installation
 
