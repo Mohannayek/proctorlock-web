@@ -19,7 +19,7 @@ This repository houses the web portal, which works in tandem with the [ProctorLo
 
 * **Frontend Framework:** React.js / Next.js *(Update this based on your exact framework)*
 * **Styling:** Tailwind CSS / Custom CSS *(Update as needed)*
-* **API Integration:** Axios / Fetch API
+* **API Integration:** RESTAPIs / Fetch API
 * **Backend Integration:** AWS API Gateway, AWS Lambda (Serverless Architecture)
 * **Design:** Figma
 
